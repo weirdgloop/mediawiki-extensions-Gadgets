@@ -18,7 +18,7 @@ class Gadget {
 	/**
 	 * Increment this when changing class structure
 	 */
-	public const GADGET_CLASS_VERSION = 9;
+	public const GADGET_CLASS_VERSION = 10;
 
 	public const CACHE_TTL = 86400;
 
@@ -26,6 +26,8 @@ class Gadget {
 	private $scripts = [];
 	/** @var string[] */
 	private $styles = [];
+	/** @var string[] */
+	private $datas = [];
 	/** @var string[] */
 	private $dependencies = [];
 	/** @var string[] */
@@ -48,6 +50,8 @@ class Gadget {
 	private $onByDefault = false;
 	/** @var bool */
 	private $hidden = false;
+	/** @var bool */
+	private $package = false;
 	/** @var string */
 	private $type = '';
 	/** @var string|null */
@@ -58,6 +62,7 @@ class Gadget {
 			switch ( $member ) {
 				case 'scripts':
 				case 'styles':
+				case 'datas':
 				case 'dependencies':
 				case 'peers':
 				case 'messages':
@@ -70,6 +75,7 @@ class Gadget {
 				case 'onByDefault':
 				case 'type':
 				case 'hidden':
+				case 'package':
 				case 'category':
 					$this->{$member} = $option;
 					break;
@@ -96,11 +102,13 @@ class Gadget {
 			'resourceLoaded' => true,
 			'requiredRights' => $data['settings']['rights'],
 			'onByDefault' => $data['settings']['default'],
+			'package' => $data['settings']['package'],
 			'hidden' => $data['settings']['hidden'],
 			'requiredSkins' => $data['settings']['skins'],
 			'category' => $data['settings']['category'],
 			'scripts' => array_map( $prefixGadgetNs, $data['module']['scripts'] ),
 			'styles' => array_map( $prefixGadgetNs, $data['module']['styles'] ),
+			'datas' => array_map( $prefixGadgetNs, $data['module']['datas'] ),
 			'dependencies' => $data['module']['dependencies'],
 			'peers' => $data['module']['peers'],
 			'messages' => $data['module']['messages'],
@@ -212,6 +220,14 @@ class Gadget {
 	}
 
 	/**
+	 * @return bool
+	 */
+	public function isPackaged(): bool {
+		// A packaged gadget needs to have a main script, so there must be at least one script
+		return $this->package && $this->supportsResourceLoader() && count( $this->scripts ) > 0;
+	}
+
+	/**
 	 * Check if this gadget is compatible with a skin
 	 *
 	 * @param Skin $skin The skin to check against
@@ -261,10 +277,17 @@ class Gadget {
 	}
 
 	/**
+	 * @return array Array of pages with JSON (including namespace)
+	 */
+	public function getJSONs(): array {
+		return $this->isPackaged() ? $this->datas : [];
+	}
+
+	/**
 	 * @return array Array of all of this gadget's resources
 	 */
 	public function getScriptsAndStyles() {
-		return array_merge( $this->scripts, $this->styles );
+		return array_merge( $this->scripts, $this->styles, $this->getJSONs() );
 	}
 
 	/**
